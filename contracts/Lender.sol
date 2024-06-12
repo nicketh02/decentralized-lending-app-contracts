@@ -9,6 +9,7 @@ contract Lender is Ownable {
     struct LenderInfo {
         uint256 amount;
         uint256 depositTime;
+        uint256 interestGainedTillLastUpdate;
     }
 
     mapping(address => LenderInfo) public lenders;
@@ -28,10 +29,13 @@ contract Lender is Ownable {
         require(_amount > 0, "Deposit amount must be greater than zero");
         LenderInfo storage lender = lenders[_lenderAddress];
         if (lender.amount == 0) {
-            lender.amount += _amount;
+            lender.amount = _amount;
             lender.depositTime = block.timestamp;
         } else {
-            lender.amount += interestGained(_lenderAddress) + _amount;
+            lender.interestGainedTillLastUpdate = totalInterestGained(
+                _lenderAddress
+            );
+            lender.amount += _amount;
             lender.depositTime = block.timestamp;
         }
     }
@@ -41,18 +45,29 @@ contract Lender is Ownable {
     ) external onlyOwner returns (uint256) {
         LenderInfo storage lender = lenders[_lenderAddress];
         require(lender.amount > 0, "No funds to withdraw");
-        uint256 totalAmount = lender.amount + interestGained(_lenderAddress);
+        uint256 totalAmount = lender.amount +
+            totalInterestGained(_lenderAddress);
         lender.amount = 0;
+        lender.interestGainedTillLastUpdate = 0;
         return totalAmount;
     }
 
-    function interestGained(
+    function interestGainedAfterUpdate(
         address _lenderAddress
-    ) public view returns (uint256) {
+    ) internal view returns (uint256) {
         LenderInfo storage lender = lenders[_lenderAddress];
         return
             (lender.amount *
                 interestRate *
                 (block.timestamp - lender.depositTime)) / (365 days * 10000);
+    }
+
+    function totalInterestGained(
+        address _lenderAddress
+    ) public view returns (uint256) {
+        LenderInfo storage lender = lenders[_lenderAddress];
+        return
+            lender.interestGainedTillLastUpdate +
+            interestGainedAfterUpdate(_lenderAddress);
     }
 }
