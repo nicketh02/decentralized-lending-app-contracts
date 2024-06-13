@@ -10,6 +10,7 @@ contract Borrower is Ownable {
 
     struct BorrowerInfo {
         uint256 stackedTokens;
+        uint256 loanAmount;
         uint256 repaymentAmount;
         uint256 borrowTime;
         uint256 loanDuration;
@@ -28,6 +29,10 @@ contract Borrower is Ownable {
         borrowers[_borrowerAddress].stackedTokens += _stackedTokens;
     }
 
+    function resetStackedTokens(address _borrowerAddress) external onlyOwner {
+        borrowers[_borrowerAddress].stackedTokens = 0;
+    }
+
     function borrow(
         uint256 _amount,
         uint256 _loanDuration,
@@ -41,6 +46,7 @@ contract Borrower is Ownable {
         require(borrowerInfo.repaymentAmount == 0, "Plz repay previous loan");
         borrowerInfo.borrowTime = block.timestamp;
         borrowerInfo.loanDuration = _loanDuration;
+        borrowerInfo.loanAmount = _amount;
         borrowerInfo.repaymentAmount =
             _amount +
             ((_amount * interestRate * _loanDuration) / (365 days * 10000));
@@ -49,7 +55,7 @@ contract Borrower is Ownable {
     function repay(
         uint256 _amount,
         address _borrowerAddress
-    ) external onlyOwner returns (bool, uint256) {
+    ) external onlyOwner returns (uint256) {
         require(_amount > 0, "Repayment amount must be greater than zero");
         BorrowerInfo storage borrower = borrowers[_borrowerAddress];
         uint256 borrowDuration = block.timestamp - borrower.borrowTime;
@@ -60,11 +66,14 @@ contract Borrower is Ownable {
         uint256 refund = 0;
         if (_amount < borrower.repaymentAmount) {
             borrower.repaymentAmount -= _amount;
-            return (false, refund);
+            return refund;
         } else {
             refund = _amount - borrower.repaymentAmount;
             borrower.repaymentAmount = 0;
-            return (true, refund);
+            borrower.borrowTime = 0;
+            borrower.loanDuration = 0;
+            borrower.loanAmount = 0;
+            return refund;
         }
     }
 
@@ -78,5 +87,8 @@ contract Borrower is Ownable {
         );
         borrower.stackedTokens = 0;
         borrower.repaymentAmount = 0;
+        borrower.borrowTime = 0;
+        borrower.loanDuration = 0;
+        borrower.loanAmount = 0;
     }
 }

@@ -45,15 +45,24 @@ contract Escrow is Ownable {
     }
 
     function repay() external payable {
-        (bool repaid, uint256 refund) = borrowerContract.repay(
-            msg.value,
-            msg.sender
-        );
-        if (repaid) {
-            token.transfer(msg.sender, borrowerContract.collateralAmount());
-        }
+        uint256 refund = borrowerContract.repay(msg.value, msg.sender);
         if (refund != 0) {
             payable(msg.sender).transfer(refund);
+        }
+    }
+
+    function claimStackedTokens() external {
+        (
+            uint256 stackedTokens,
+            ,
+            ,
+            ,
+            uint256 repaymentAmount
+        ) = borrowerContract.borrowers(msg.sender);
+        require(stackedTokens > 0, "no stacked tokens");
+        if (repaymentAmount == 0) {
+            borrowerContract.resetStackedTokens(msg.sender);
+            token.transfer(msg.sender, stackedTokens);
         }
     }
 
