@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -20,6 +20,10 @@ contract Borrower is Ownable {
 
     constructor(uint256 _interestRate) Ownable(msg.sender) {
         interestRate = _interestRate;
+    }
+
+    function setInterestRate(uint256 _rate) external onlyOwner {
+        interestRate = _rate;
     }
 
     function stakeTokens(

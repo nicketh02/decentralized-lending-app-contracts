@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import {Lender} from "./Lender.sol";
 import {Borrower} from "./Borrower.sol";
@@ -14,15 +14,23 @@ contract Escrow is Ownable {
     constructor(uint256 _interestrate) payable Ownable(msg.sender) {
         token = new PlatformToken();
         lenderContract = new Lender(_interestrate);
-        borrowerContract = new Borrower(500);
+        borrowerContract = new Borrower(_interestrate);
     }
 
     function getTokens(uint256 _amount) public {
         token.mint(msg.sender, _amount);
     }
 
-    function changeInterestRate(uint256 _interestRate) external onlyOwner {
+    function changeLendersInterestRate(
+        uint256 _interestRate
+    ) external onlyOwner {
         lenderContract.setInterestRate(_interestRate);
+    }
+
+    function changeBorrowersInterestRate(
+        uint256 _interestRate
+    ) external onlyOwner {
+        borrowerContract.setInterestRate(_interestRate);
     }
 
     function deposit() public payable {
@@ -60,10 +68,9 @@ contract Escrow is Ownable {
             uint256 repaymentAmount
         ) = borrowerContract.borrowers(msg.sender);
         require(stackedTokens > 0, "no stacked tokens");
-        if (repaymentAmount == 0) {
-            borrowerContract.resetStackedTokens(msg.sender);
-            token.transfer(msg.sender, stackedTokens);
-        }
+        require(repaymentAmount == 0, "first repay loan");
+        borrowerContract.resetStackedTokens(msg.sender);
+        token.transfer(msg.sender, stackedTokens);
     }
 
     function claimCollateral(address _borrowerAddress) external {
